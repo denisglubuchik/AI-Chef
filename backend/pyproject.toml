@@ -1,0 +1,11 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.120.2",
+    "openai-agents>=0.4.2",
+    "pydantic-settings>=2.11.0",
+]
