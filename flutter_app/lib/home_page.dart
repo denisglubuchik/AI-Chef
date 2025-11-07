@@ -8,7 +8,9 @@ class HomePage extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
     if (!context.mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(Routes.signin, (route) => false);
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(Routes.signin, (route) => false);
   }
 
   @override
@@ -25,7 +27,28 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(child: Text('Привет, ${user?.email}')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Привет, ${user?.email}'),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pushNamed(Routes.recipeSearch);
+              },
+              icon: const Icon(Icons.restaurant_menu),
+              label: const Text('Найти рецепты'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
