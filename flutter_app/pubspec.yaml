@@ -94,3 +94,5 @@ flutter:
   assets:
     # Подключаем .env, чтобы flutter_dotenv мог его загрузить
     - .env
+    # Иконки приложения
+    - assets/icons/

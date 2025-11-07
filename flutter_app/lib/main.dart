@@ -26,9 +26,49 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'AI Chef',
+      title: 'AI-Holodilnik',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1B4D3E), // Темно-зеленый из логотипа
+          brightness: Brightness.light,
+          primary: const Color(0xFF1B4D3E),
+          secondary: const Color(0xFF2A6B54),
+          surface: const Color(0xFFF5E6D3), // Бежевый из логотипа
+        ),
+        scaffoldBackgroundColor: const Color(0xFFFAF3E9),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1B4D3E),
+          foregroundColor: Color(0xFFF5E6D3),
+          elevation: 0,
+        ),
+        cardTheme: CardThemeData(
+          color: const Color(0xFFFFFBF5),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1B4D3E),
+            foregroundColor: const Color(0xFFF5E6D3),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF1B4D3E)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF1B4D3E), width: 2),
+          ),
+        ),
       ),
       routes: {
         Routes.splash: (_) => const SplashPage(),
