@@ -7,7 +7,6 @@ from agents import Tool, function_tool
 from agents import OpenAIResponsesModel
 from openai import AsyncOpenAI
 
-from backend.agent.config import AgentModelConfig
 from backend.agent.schemas import (
     ExtractIngredientsResult,
     RecipeRequest,
