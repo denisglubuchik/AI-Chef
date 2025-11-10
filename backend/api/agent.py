@@ -33,7 +33,7 @@ class BuildRecipeRequest(BaseModel):
     servings: Optional[int] = Field(None, ge=1, description="Number of servings")
 
 
-@router.get("/extract-ingredients", response_model=ExtractIngredientsResult)
+@router.post("/extract-ingredients", response_model=ExtractIngredientsResult)
 async def extract_ingredients(
     agent_service: AgentService,
     image: UploadFile = File(..., description="Photo of fridge or ingredients"),
@@ -78,7 +78,7 @@ async def extract_ingredients(
         )
 
 
-@router.get("/suggest-meals", response_model=SuggestionsResult)
+@router.post("/suggest-meals", response_model=SuggestionsResult)
 async def suggest_meals(
     request: SuggestMealsRequest,
     agent_service: AgentService,
@@ -113,7 +113,7 @@ async def suggest_meals(
         )
 
 
-@router.get("/build-recipe", response_model=RecipeResult)
+@router.post("/build-recipe", response_model=RecipeResult)
 async def build_recipe(
     request: BuildRecipeRequest,
     agent_service: AgentService,
@@ -154,7 +154,7 @@ async def build_recipe(
 
 
 # Combined endpoint for mobile app convenience
-@router.get("/extract-and-suggest")
+@router.post("/extract-and-suggest")
 async def extract_and_suggest(
     agent_service: AgentService,
     image: UploadFile = File(..., description="Photo of fridge or ingredients"),
