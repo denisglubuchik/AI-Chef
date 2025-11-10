@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'recipe_search_page.dart';
 
 class RecipeDetailPage extends StatefulWidget {
@@ -16,11 +17,38 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   RecipeDetail? _recipe;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isSaving = false;
+  bool _isFavorite = false;
 
   @override
   void initState() {
     super.initState();
     _loadRecipe();
+    _checkIfFavorite();
+  }
+
+  Future<void> _checkIfFavorite() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+
+      if (userId == null) return;
+
+      final existing = await supabase
+          .from('favourite_recipes')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('title', widget.suggestion.title)
+          .maybeSingle();
+
+      if (mounted) {
+        setState(() {
+          _isFavorite = existing != null;
+        });
+      }
+    } catch (e) {
+      // Игнорируем ошибки проверки
+    }
   }
 
   Future<void> _loadRecipe() async {
@@ -60,6 +88,99 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _errorMessage = 'Ошибка соединения: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _addToFavorites() async {
+    if (_recipe == null || _isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw Exception('Пользователь не авторизован');
+      }
+
+      // Проверяем, есть ли уже этот рецепт в избранном
+      final existingRecipes = await supabase
+          .from('favourite_recipes')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('title', _recipe!.title)
+          .maybeSingle();
+
+      if (existingRecipes != null) {
+        if (!mounted) return;
+
+        // Рецепт уже в избранном
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Этот рецепт уже в избранном'),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      // Сохраняем рецепт в избранное
+      await supabase.from('favourite_recipes').insert({
+        'user_id': userId,
+        'title': _recipe!.title,
+        'data': _recipe!.toJson(),
+      });
+
+      if (!mounted) return;
+
+      // Обновляем статус избранного
+      setState(() {
+        _isFavorite = true;
+      });
+
+      // Показываем успешное сообщение
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.favorite, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Рецепт добавлен в избранное'),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1B4D3E),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      // Показываем ошибку
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -290,6 +411,31 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 ],
               ),
             ),
+      floatingActionButton: _recipe != null
+          ? FloatingActionButton.extended(
+              onPressed: _isSaving || _isFavorite ? null : _addToFavorites,
+              backgroundColor: _isFavorite
+                  ? Colors.grey.shade400
+                  : const Color(0xFF1B4D3E),
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(_isFavorite ? Icons.favorite : Icons.favorite_border),
+              label: Text(
+                _isSaving
+                    ? 'Сохранение...'
+                    : _isFavorite
+                    ? 'В избранном'
+                    : 'В избранное',
+              ),
+            )
+          : null,
     );
   }
 
@@ -344,6 +490,19 @@ class RecipeDetail {
           (json['equipment'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'suggestion_id': suggestionId,
+      'title': title,
+      'servings': servings,
+      'prep_time_minutes': prepTimeMinutes,
+      'cook_time_minutes': cookTimeMinutes,
+      'ingredients': ingredients.map((i) => i.toJson()).toList(),
+      'steps': steps.map((s) => s.toJson()).toList(),
+      'equipment': equipment,
+    };
+  }
 }
 
 class RecipeIngredient {
@@ -364,6 +523,14 @@ class RecipeIngredient {
       preparation: json['preparation'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'ingredient': ingredient,
+      'quantity': quantity,
+      'preparation': preparation,
+    };
+  }
 }
 
 class RecipeStep {
@@ -379,5 +546,9 @@ class RecipeStep {
       instruction: json['instruction'] ?? '',
       tip: json['tip'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'number': number, 'instruction': instruction, 'tip': tip};
   }
 }
