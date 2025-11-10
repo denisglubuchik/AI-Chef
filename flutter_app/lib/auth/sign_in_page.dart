@@ -22,11 +22,17 @@ class _SignInPageState extends State<SignInPage> {
         password: _password.text,
       );
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil(Routes.home, (r) => false);
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(Routes.recipeSearch, (r) => false);
     } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ошибка входа')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ошибка входа')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -46,24 +52,32 @@ class _SignInPageState extends State<SignInPage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(labelText: 'Email'),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _password,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Пароль'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             FilledButton(
               onPressed: _loading ? null : _signIn,
               child: _loading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Войти'),
             ),
+            const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.of(context).pushNamed(Routes.signup),
               child: const Text('Нет аккаунта? Зарегистрироваться'),

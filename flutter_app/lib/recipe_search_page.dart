@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
 import 'dart:convert';
+
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+// import 'package:supabase_flutter/supabase_flutter.dart';
 import 'recipe_detail_page.dart';
+import 'routes.dart';
 
 class RecipeSearchPage extends StatefulWidget {
   const RecipeSearchPage({super.key});
@@ -80,109 +83,125 @@ class _RecipeSearchPageState extends State<RecipeSearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Поиск рецептов')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _ingredientsController,
-              decoration: const InputDecoration(
-                labelText: 'Ингредиенты',
-                hintText: 'Например: курица, рис, морковь',
-                helperText: 'Введите ингредиенты через запятую',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
+      appBar: AppBar(
+        title: const Text('Поиск рецептов'),
+        actions: [
+          IconButton(
+            tooltip: 'Открыть профиль',
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.of(context).pushNamed(Routes.profile);
+            },
+          ),
+        ],
+      ),
+      body: _buildRecipeSearchView(),
+    );
+  }
+
+  Widget _buildRecipeSearchView() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _ingredientsController,
+            decoration: const InputDecoration(
+              labelText: 'Ингредиенты',
+              hintText: 'Например: курица, рис, морковь',
+              helperText: 'Введите ингредиенты через запятую',
+              border: OutlineInputBorder(),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _searchRecipes,
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Найти рецепты'),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _isLoading ? null : _searchRecipes,
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Найти рецепты'),
+          ),
+          const SizedBox(height: 12),
+          const SizedBox(height: 12),
+          if (_errorMessage != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Text(
+                _errorMessage!,
+                style: TextStyle(color: Colors.red.shade900),
+              ),
             ),
-            const SizedBox(height: 24),
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red.shade900),
-                ),
-              ),
-            if (_recipes.isNotEmpty) ...[
-              const Text(
-                'Найденные рецепты:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-            ],
-            Expanded(
-              child: _recipes.isEmpty && !_isLoading
-                  ? const Center(
-                      child: Text(
-                        'Введите ингредиенты и нажмите "Найти рецепты"',
-                        style: TextStyle(color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _recipes.length,
-                      itemBuilder: (context, index) {
-                        final recipe = _recipes[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      RecipeDetailPage(suggestion: recipe),
-                                ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    recipe.title,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    recipe.description,
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
+          if (_recipes.isNotEmpty) ...[
+            const Text(
+              'Найденные рецепты:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Expanded(
+            child: _recipes.isEmpty && !_isLoading
+                ? const Center(
+                    child: Text(
+                      'Введите ингредиенты и нажмите "Найти рецепты"',
+                      style: TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _recipes.length,
+                    itemBuilder: (context, index) {
+                      final recipe = _recipes[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    RecipeDetailPage(suggestion: recipe),
                               ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  recipe.title,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  recipe.description,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }

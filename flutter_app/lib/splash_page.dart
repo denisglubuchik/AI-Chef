@@ -22,15 +22,13 @@ class _SplashPageState extends State<SplashPage> {
 
     final hasSession = Supabase.instance.client.auth.currentSession != null;
     Navigator.of(context).pushNamedAndRemoveUntil(
-      hasSession ? Routes.home : Routes.signin,
+      hasSession ? Routes.recipeSearch : Routes.signin,
       (route) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

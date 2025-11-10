@@ -25,14 +25,26 @@ class _SignUpPageState extends State<SignUpPage> {
 
       final needsConfirm = res.session == null;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(needsConfirm ? 'Проверьте почту для подтверждения.' : 'Регистрация успешна.')),
+        SnackBar(
+          content: Text(
+            needsConfirm
+                ? 'Проверьте почту для подтверждения.'
+                : 'Регистрация успешна.',
+          ),
+        ),
       );
 
-      Navigator.of(context).pushNamedAndRemoveUntil(Routes.signin, (r) => false);
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(Routes.signin, (r) => false);
     } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ошибка регистрации')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ошибка регистрации')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -52,23 +64,35 @@ class _SignUpPageState extends State<SignUpPage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(labelText: 'Email'),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _password,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Пароль'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             FilledButton(
               onPressed: _loading ? null : _signUp,
               child: _loading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Создать аккаунт'),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Уже есть аккаунт? Войти'),
             ),
           ],
         ),

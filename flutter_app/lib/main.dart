@@ -5,8 +5,8 @@ import 'routes.dart';
 import 'splash_page.dart';
 import 'auth/sign_in_page.dart';
 import 'auth/sign_up_page.dart';
-import 'home_page.dart';
 import 'recipe_search_page.dart';
+import 'profile_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,8 +74,8 @@ class MyApp extends StatelessWidget {
         Routes.splash: (_) => const SplashPage(),
         Routes.signin: (_) => const SignInPage(),
         Routes.signup: (_) => const SignUpPage(),
-        Routes.home: (_) => const HomePage(),
         Routes.recipeSearch: (_) => const RecipeSearchPage(),
+        Routes.profile: (_) => const ProfilePage(),
       },
       initialRoute: Routes.splash,
     );
