@@ -8,6 +8,8 @@ from agents import Agent, OpenAIResponsesModel, function_tool
 from openai import AsyncOpenAI
 
 from backend.agent.schemas import (
+    AgentRecipeResult,
+    AgentSuggestionsResult,
     ExtractIngredientsResult,
     RecipeRequest,
     RecipeResult,
@@ -35,9 +37,11 @@ class HolodilnikAgentService:
             name="Holodilnik Kitchen Assistant",
             model=model,
             instructions=(
-                "Use the provided tools to analyze fridge photos, craft meal suggestions, "
-                "and expand any selected dish into a detailed recipe. "
-                "Always return valid JSON that matches the schema expected for the request."
+                "Ты - кулинарный помощник для русскоязычных пользователей. "
+                "Используй предоставленные инструменты для анализа фотографий холодильника, создания предложений блюд "
+                "и разработки детального рецепта для любого выбранного блюда. "
+                "Всегда возвращай валидный JSON, соответствующий ожидаемой схеме для запроса. "
+                "ВСЕ тексты в ответах должны быть НА РУССКОМ ЯЗЫКЕ."
             ),
             tools=tools,
         )
@@ -86,14 +90,15 @@ class HolodilnikAgentService:
                     {
                         "role": "system",
                         "content": (
-                            "Extract every edible ingredient you can identify in the image. "
-                            "Return structured JSON that matches the ExtractIngredientsResult schema."
+                            "Извлеки все съедобные ингредиенты, которые ты можешь определить на изображении. "
+                            "Верни структурированный JSON, соответствующий схеме ExtractIngredientsResult. "
+                            "ВАЖНО: Все названия ингредиентов, заметки и описания должны быть НА РУССКОМ ЯЗЫКЕ."
                         ),
                     },
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": "Analyze this fridge photo."},
+                            {"type": "text", "text": "Проанализируй это фото холодильника."},
                             {
                                 "type": "image_url",
                                 "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
@@ -124,8 +129,9 @@ class HolodilnikAgentService:
                     {
                         "role": "system",
                         "content": (
-                            "Suggest between three and five realistic dishes. "
-                            "Focus on dishes that primarily use provided ingredients."
+                            "Предложи от трёх до пяти реалистичных блюд. "
+                            "Сосредоточься на блюдах, которые в основном используют предоставленные ингредиенты. "
+                            "ВАЖНО: Все названия блюд и описания должны быть НА РУССКОМ ЯЗЫКЕ."
                         ),
                     },
                     {
@@ -133,24 +139,23 @@ class HolodilnikAgentService:
                         "content": request.model_dump_json(),
                     },
                 ],
-                response_format=_schema(SuggestionsResult),
+                response_format=_schema(AgentSuggestionsResult),
             )
-            return SuggestionsResult.model_validate_json(response.choices[0].message.content).model_dump()
+            return AgentSuggestionsResult.model_validate_json(response.choices[0].message.content).model_dump()
 
         @function_tool
         async def recipe_writer(
-            suggestion_id: str,
             title: str,
             context_summary: Optional[str] = None,
             servings: Optional[int] = None,
         ) -> dict:
             """Expands a selected dish into a detailed recipe."""
-            request = RecipeRequest(
-                suggestion_id=suggestion_id,
-                title=title,
-                context_summary=context_summary,
-                servings=servings,
-            )
+            # Agent doesn't need to know about suggestion_id
+            request_data = {
+                "title": title,
+                "context_summary": context_summary,
+                "servings": servings,
+            }
             
             response = await client.chat.completions.create(
                 model=model_name,
@@ -158,18 +163,19 @@ class HolodilnikAgentService:
                     {
                         "role": "system",
                         "content": (
-                            "Generate a complete recipe with precise ingredient quantities, "
-                            "preparation steps, equipment, and realistic timings."
+                            "Сгенерируй полный рецепт с точными количествами ингредиентов, "
+                            "шагами приготовления, оборудованием и реалистичным временем. "
+                            "ВАЖНО: Весь рецепт (ингредиенты, инструкции, советы, оборудование) должен быть НА РУССКОМ ЯЗЫКЕ."
                         ),
                     },
                     {
                         "role": "user",
-                        "content": request.model_dump_json(),
+                        "content": json.dumps(request_data),
                     },
                 ],
-                response_format=_schema(RecipeResult),
+                response_format=_schema(AgentRecipeResult),
             )
-            return RecipeResult.model_validate_json(response.choices[0].message.content).model_dump()
+            return AgentRecipeResult.model_validate_json(response.choices[0].message.content).model_dump()
 
         return [vision_ingredient_extractor, dish_suggester, recipe_writer]
 
@@ -187,7 +193,7 @@ class HolodilnikAgentService:
         servings: Optional[int],
         dietary_preferences: Optional[list[str]],
     ) -> SuggestionsResult:
-        """Generate meal suggestions - calls tool directly."""
+        """Generate meal suggestions - calls tool directly and adds suggestion_id."""
         # Call tool directly, bypassing Runner
         tool = self._agent.tools[1]  # dish_suggester
         args = {
@@ -196,17 +202,20 @@ class HolodilnikAgentService:
             "dietary_preferences": dietary_preferences,
         }
         result_dict = await tool.on_invoke_tool(None, json.dumps(args))
-        return SuggestionsResult.model_validate(result_dict)
+        agent_result = AgentSuggestionsResult.model_validate(result_dict)
+        # Convert to API result with suggestion_id added by backend
+        return SuggestionsResult.from_agent_result(agent_result)
 
     async def build_recipe(self, request: RecipeRequest) -> RecipeResult:
-        """Build detailed recipe - calls tool directly."""
-        # Call tool directly, bypassing Runner
+        """Build detailed recipe - calls tool directly and adds suggestion_id from request."""
+        # Call tool directly, bypassing Runner (agent doesn't need suggestion_id)
         tool = self._agent.tools[2]  # recipe_writer
         args = {
-            "suggestion_id": request.suggestion_id,
             "title": request.title,
             "context_summary": request.context_summary,
             "servings": request.servings,
         }
         result_dict = await tool.on_invoke_tool(None, json.dumps(args))
-        return RecipeResult.model_validate(result_dict)
+        agent_result = AgentRecipeResult.model_validate(result_dict)
+        # Convert to API result with suggestion_id added from request
+        return RecipeResult.from_agent_result(agent_result, request.suggestion_id)
