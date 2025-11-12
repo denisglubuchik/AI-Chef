@@ -38,6 +38,9 @@ dependencies:
   # Добавлено: HTTP клиент
   http: ^1.1.0
 
+  # Добавлено: Выбор изображений
+  image_picker: ^1.0.7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

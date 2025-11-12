@@ -4,10 +4,20 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'recipe_search_page.dart';
 
+// Кэш для сгенерированных рецептов
+final Map<String, RecipeDetail> _recipeCache = {};
+
 class RecipeDetailPage extends StatefulWidget {
   final RecipeSuggestion suggestion;
+  final RecipeDetail? cachedRecipe; // Опциональный уже готовый рецепт
+  final bool? isAlreadyFavorite; // Опционально передаем статус избранного
 
-  const RecipeDetailPage({super.key, required this.suggestion});
+  const RecipeDetailPage({
+    super.key,
+    required this.suggestion,
+    this.cachedRecipe,
+    this.isAlreadyFavorite,
+  });
 
   @override
   State<RecipeDetailPage> createState() => _RecipeDetailPageState();
@@ -19,10 +29,16 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   String? _errorMessage;
   bool _isSaving = false;
   bool _isFavorite = false;
+  String? _favoriteId; // ID записи в БД для удаления
+  String _loadingStatus = 'Генерируем рецепт...';
 
   @override
   void initState() {
     super.initState();
+    // Если статус избранного передан, используем его сразу
+    if (widget.isAlreadyFavorite != null) {
+      _isFavorite = widget.isAlreadyFavorite!;
+    }
     _loadRecipe();
     _checkIfFavorite();
   }
@@ -44,6 +60,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       if (mounted) {
         setState(() {
           _isFavorite = existing != null;
+          _favoriteId = existing?['id'];
         });
       }
     } catch (e) {
@@ -52,12 +69,42 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   Future<void> _loadRecipe() async {
+    // Проверяем кэш
+    if (widget.cachedRecipe != null) {
+      setState(() {
+        _recipe = widget.cachedRecipe;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Проверяем глобальный кэш
+    final cacheKey = widget.suggestion.suggestionId;
+    if (_recipeCache.containsKey(cacheKey)) {
+      setState(() {
+        _recipe = _recipeCache[cacheKey];
+        _isLoading = false;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _loadingStatus = 'Генерируем рецепт...';
     });
 
     try {
+      setState(() {
+        _loadingStatus = 'Подбираем ингредиенты...';
+      });
+
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      setState(() {
+        _loadingStatus = 'Составляем инструкции...';
+      });
+
       // TODO: Заменить на реальный URL вашего backend
       final url = Uri.parse('http://localhost:8000/agent/build-recipe');
 
@@ -73,8 +120,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final recipe = RecipeDetail.fromJson(data);
+
+        // Сохраняем в кэш
+        _recipeCache[cacheKey] = recipe;
+
         setState(() {
-          _recipe = RecipeDetail.fromJson(data);
+          _recipe = recipe;
           _isLoading = false;
         });
       } else {
@@ -91,7 +143,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     }
   }
 
-  Future<void> _addToFavorites() async {
+  Future<void> _toggleFavorite() async {
     if (_recipe == null || _isSaving) return;
 
     setState(() {
@@ -106,68 +158,71 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         throw Exception('Пользователь не авторизован');
       }
 
-      // Проверяем, есть ли уже этот рецепт в избранном
-      final existingRecipes = await supabase
-          .from('favourite_recipes')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('title', _recipe!.title)
-          .maybeSingle();
+      if (_isFavorite && _favoriteId != null) {
+        // Удаляем из избранного
+        await supabase
+            .from('favourite_recipes')
+            .delete()
+            .eq('id', _favoriteId!);
 
-      if (existingRecipes != null) {
         if (!mounted) return;
 
-        // Рецепт уже в избранном
+        setState(() {
+          _isFavorite = false;
+          _favoriteId = null;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.white),
+                Icon(Icons.favorite_border, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Этот рецепт уже в избранном'),
+                Text('Рецепт удален из избранного'),
               ],
             ),
-            backgroundColor: Colors.orange.shade700,
+            backgroundColor: Colors.grey.shade700,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
         );
-        return;
-      }
+      } else {
+        // Добавляем в избранное
+        final response = await supabase
+            .from('favourite_recipes')
+            .insert({
+              'user_id': userId,
+              'title': _recipe!.title,
+              'data': _recipe!.toJson(),
+            })
+            .select('id')
+            .single();
 
-      // Сохраняем рецепт в избранное
-      await supabase.from('favourite_recipes').insert({
-        'user_id': userId,
-        'title': _recipe!.title,
-        'data': _recipe!.toJson(),
-      });
+        if (!mounted) return;
 
-      if (!mounted) return;
+        setState(() {
+          _isFavorite = true;
+          _favoriteId = response['id'];
+        });
 
-      // Обновляем статус избранного
-      setState(() {
-        _isFavorite = true;
-      });
-
-      // Показываем успешное сообщение
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.favorite, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Рецепт добавлен в избранное'),
-            ],
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.favorite, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Рецепт добавлен в избранное'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1B4D3E),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
           ),
-          backgroundColor: const Color(0xFF1B4D3E),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
-      // Показываем ошибку
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Ошибка: ${e.toString()}'),
@@ -189,7 +244,28 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.suggestion.title)),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 24),
+                  Text(
+                    _loadingStatus,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF1B4D3E),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Это может занять несколько секунд',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            )
           : _errorMessage != null
           ? Center(
               child: Padding(
@@ -413,9 +489,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
       floatingActionButton: _recipe != null
           ? FloatingActionButton.extended(
-              onPressed: _isSaving || _isFavorite ? null : _addToFavorites,
+              onPressed: _isSaving ? null : _toggleFavorite,
               backgroundColor: _isFavorite
-                  ? Colors.grey.shade400
+                  ? Colors.red.shade400
                   : const Color(0xFF1B4D3E),
               icon: _isSaving
                   ? const SizedBox(
@@ -431,7 +507,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 _isSaving
                     ? 'Сохранение...'
                     : _isFavorite
-                    ? 'В избранном'
+                    ? 'Удалить из избранного'
                     : 'В избранное',
               ),
             )
