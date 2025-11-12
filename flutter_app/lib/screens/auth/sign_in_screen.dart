@@ -1,48 +1,60 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../routes.dart';
 
-class SignInPage extends StatefulWidget {
-  const SignInPage({super.key});
+import '../../services/auth_service.dart';
+import '../../routes.dart';
+
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key});
 
   @override
-  State<SignInPage> createState() => _SignInPageState();
+  State<SignInScreen> createState() => _SignInScreenState();
 }
 
-class _SignInPageState extends State<SignInPage> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  bool _loading = false;
+class _SignInScreenState extends State<SignInScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _authService = AuthService();
 
-  Future<void> _signIn() async {
-    setState(() => _loading = true);
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSignIn() async {
+    setState(() => _isLoading = true);
+
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: _email.text.trim(),
-        password: _password.text,
+      await _authService.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
+
       if (!mounted) return;
+
       Navigator.of(
         context,
-      ).pushNamedAndRemoveUntil(Routes.recipeSearch, (r) => false);
-    } on AuthException catch (e) {
+      ).pushNamedAndRemoveUntil(Routes.recipeSearch, (route) => false);
+    } on AuthServiceException catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Ошибка входа')));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-  }
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    super.dispose();
   }
 
   @override
@@ -56,20 +68,23 @@ class _SignInPageState extends State<SignInPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
-              controller: _email,
+              controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(labelText: 'Email'),
+              enabled: !_isLoading,
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _password,
+              controller: _passwordController,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Пароль'),
+              enabled: !_isLoading,
+              onSubmitted: _isLoading ? null : (_) => _handleSignIn(),
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: _loading ? null : _signIn,
-              child: _loading
+              onPressed: _isLoading ? null : _handleSignIn,
+              child: _isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -79,7 +94,9 @@ class _SignInPageState extends State<SignInPage> {
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.of(context).pushNamed(Routes.signup),
+              onPressed: _isLoading
+                  ? null
+                  : () => Navigator.of(context).pushNamed(Routes.signup),
               child: const Text('Нет аккаунта? Зарегистрироваться'),
             ),
           ],

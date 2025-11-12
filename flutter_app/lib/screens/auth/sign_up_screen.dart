@@ -1,33 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../routes.dart';
 
-class SignUpPage extends StatefulWidget {
-  const SignUpPage({super.key});
+import '../../services/auth_service.dart';
+import '../../routes.dart';
+
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<SignUpPage> createState() => _SignUpPageState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignUpPageState extends State<SignUpPage> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  bool _loading = false;
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _authService = AuthService();
 
-  Future<void> _signUp() async {
-    setState(() => _loading = true);
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSignUp() async {
+    setState(() => _isLoading = true);
+
     try {
-      final res = await Supabase.instance.client.auth.signUp(
-        email: _email.text.trim(),
-        password: _password.text,
+      final needsConfirmation = await _authService.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
+
       if (!mounted) return;
 
-      final needsConfirm = res.session == null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            needsConfirm
+            needsConfirmation
                 ? 'Проверьте почту для подтверждения.'
                 : 'Регистрация успешна.',
           ),
@@ -36,25 +47,24 @@ class _SignUpPageState extends State<SignUpPage> {
 
       Navigator.of(
         context,
-      ).pushNamedAndRemoveUntil(Routes.signin, (r) => false);
-    } on AuthException catch (e) {
+      ).pushNamedAndRemoveUntil(Routes.signin, (route) => false);
+    } on AuthServiceException catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Ошибка регистрации')));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-  }
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    super.dispose();
   }
 
   @override
@@ -68,20 +78,23 @@ class _SignUpPageState extends State<SignUpPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
-              controller: _email,
+              controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(labelText: 'Email'),
+              enabled: !_isLoading,
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _password,
+              controller: _passwordController,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Пароль'),
+              enabled: !_isLoading,
+              onSubmitted: _isLoading ? null : (_) => _handleSignUp(),
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: _loading ? null : _signUp,
-              child: _loading
+              onPressed: _isLoading ? null : _handleSignUp,
+              child: _isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -91,7 +104,7 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
               child: const Text('Уже есть аккаунт? Войти'),
             ),
           ],

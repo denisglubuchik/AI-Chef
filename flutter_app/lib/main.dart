@@ -3,10 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'routes.dart';
 import 'splash_page.dart';
-import 'auth/sign_in_page.dart';
-import 'auth/sign_up_page.dart';
-import 'recipe_search_page.dart';
-import 'profile_page.dart';
+import 'screens/auth/sign_in_screen.dart';
+import 'screens/auth/sign_up_screen.dart';
+import 'screens/recipe_search/recipe_search_screen.dart';
+import 'screens/profile/profile_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,10 +72,10 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         Routes.splash: (_) => const SplashPage(),
-        Routes.signin: (_) => const SignInPage(),
-        Routes.signup: (_) => const SignUpPage(),
-        Routes.recipeSearch: (_) => const RecipeSearchPage(),
-        Routes.profile: (_) => const ProfilePage(),
+        Routes.signin: (_) => const SignInScreen(),
+        Routes.signup: (_) => const SignUpScreen(),
+        Routes.recipeSearch: (_) => const RecipeSearchScreen(),
+        Routes.profile: (_) => const ProfileScreen(),
       },
       initialRoute: Routes.splash,
     );
