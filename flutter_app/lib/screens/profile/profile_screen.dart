@@ -312,6 +312,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
+            elevation: 4,
+            shadowColor: Colors.black.withOpacity(0.1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: InkWell(
               onTap: () => _openRecipe(favorite),
               borderRadius: BorderRadius.circular(12),

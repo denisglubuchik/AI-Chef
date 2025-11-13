@@ -36,6 +36,11 @@ class SuggestionList extends StatelessWidget {
               final suggestion = suggestions[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
+                elevation: 4,
+                shadowColor: Colors.black.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: InkWell(
                   onTap: () => onTap(suggestion),
                   borderRadius: BorderRadius.circular(12),

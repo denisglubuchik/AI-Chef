@@ -259,6 +259,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
           const SizedBox(height: 12),
           Card(
+            elevation: 3,
+            shadowColor: Colors.black.withOpacity(0.08),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -357,6 +362,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ..._recipe!.steps.map(
             (step) => Card(
               margin: const EdgeInsets.only(bottom: 12),
+              elevation: 3,
+              shadowColor: Colors.black.withOpacity(0.08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
