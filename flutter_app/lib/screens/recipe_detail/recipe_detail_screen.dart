@@ -268,14 +268,17 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       (ing) => Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.circle,
-                              size: 8,
-                              color: Colors.grey,
+                            const Padding(
+                              padding: EdgeInsets.only(top: 2.0),
+                              child: Icon(
+                                Icons.circle,
+                                size: 8,
+                                color: Colors.grey,
+                              ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,12 +288,15 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                   if (ing.preparation != null)
-                                    Text(
-                                      ing.preparation!,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade600,
-                                        fontStyle: FontStyle.italic,
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4.0),
+                                      child: Text(
+                                        ing.preparation!,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade600,
+                                          fontStyle: FontStyle.italic,
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -317,10 +323,24 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               spacing: 8,
               runSpacing: 8,
               children: _recipe!.equipment
+                  .asMap()
+                  .entries
                   .map(
-                    (eq) => Chip(
-                      label: Text(eq),
-                      avatar: const Icon(Icons.kitchen, size: 18),
+                    (entry) => Chip(
+                      label: Text(entry.value),
+                      avatar: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: _getEquipmentColors(entry.key),
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                      ),
+                      backgroundColor: Colors.grey.shade50,
                     ),
                   )
                   .toList(),
@@ -410,5 +430,20 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       label: Text(label),
       backgroundColor: Colors.grey.shade100,
     );
+  }
+
+  List<Color> _getEquipmentColors(int index) {
+    // Палитра в стиле приложения - зеленые и теплые оттенки
+    final colorPairs = [
+      [const Color(0xFF1B4D3E), const Color(0xFF2D7A5F)], // Темно-зеленый
+      [const Color(0xFF3A8F6B), const Color(0xFF4CAF7D)], // Средне-зеленый
+      [const Color(0xFFFF9800), const Color(0xFFFFB74D)], // Оранжевый
+      [const Color(0xFF5C6BC0), const Color(0xFF7986CB)], // Синий
+      [const Color(0xFF26A69A), const Color(0xFF4DB6AC)], // Бирюзовый
+      [const Color(0xFFEF5350), const Color(0xFFE57373)], // Красный
+      [const Color(0xFFAB47BC), const Color(0xFFBA68C8)], // Фиолетовый
+    ];
+
+    return colorPairs[index % colorPairs.length];
   }
 }

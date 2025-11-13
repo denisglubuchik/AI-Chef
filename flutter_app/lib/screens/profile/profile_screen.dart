@@ -19,15 +19,44 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   final FavoritesService _favoritesService = FavoritesService();
+  final TextEditingController _searchController = TextEditingController();
 
   List<FavoriteRecipe> _favorites = [];
+  List<FavoriteRecipe> _filteredFavorites = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    _searchController.addListener(_filterFavorites);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterFavorites() {
+    final query = _searchController.text.toLowerCase();
+
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _filteredFavorites = _favorites;
+      } else {
+        _filteredFavorites = _favorites.where((favorite) {
+          final titleMatch = favorite.recipe.title.toLowerCase().contains(
+            query,
+          );
+          final descMatch = favorite.title.toLowerCase().contains(query);
+          return titleMatch || descMatch;
+        }).toList();
+      }
+    });
   }
 
   Future<void> _loadFavorites() async {
@@ -43,6 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() {
         _favorites = favorites;
+        _filteredFavorites = favorites;
         _isLoading = false;
       });
     } catch (e) {
@@ -83,6 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() {
         _favorites.removeWhere((f) => f.id == favorite.id);
+        _filterFavorites();
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -200,16 +231,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 const Icon(Icons.favorite, color: Color(0xFF1B4D3E)),
                 const SizedBox(width: 8),
-                Text(
-                  'Избранные рецепты (${_favorites.length})',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Избранные рецепты (${_filteredFavorites.length}${_searchQuery.isNotEmpty ? ' из ${_favorites.length}' : ''})',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+
+          // Search field
+          if (_favorites.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Поиск рецептов...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => _searchController.clear(),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
 
           // Favorites list
           Expanded(child: _buildFavoritesList()),
@@ -235,13 +293,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    if (_filteredFavorites.isEmpty && _searchQuery.isNotEmpty) {
+      return const EmptyState(
+        message: 'Ничего не найдено',
+        subtitle: 'Попробуйте изменить запрос',
+        icon: Icons.search_off,
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: _loadFavorites,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _favorites.length,
+        itemCount: _filteredFavorites.length,
         itemBuilder: (context, index) {
-          final favorite = _favorites[index];
+          final favorite = _filteredFavorites[index];
           final recipe = favorite.recipe;
 
           return Card(
